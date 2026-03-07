@@ -65,6 +65,7 @@ private:
 
 	winrt::fire_and_forget OnProcessDied();
 	void OnPackageUninstalling(const wam::PackageCatalog &catalog, const wam::PackageUninstallingEventArgs &args);
+	void OnPackageUpdating(const wam::PackageCatalog &catalog, const wam::PackageUpdatingEventArgs &args);
 	std::optional<TaskbarInfo> GetTaskbarInfo(HWND taskbar);
 
 	static void RestoreDefaultControlFill(const ControlInfo<wux::Shapes::Shape> &info);
@@ -80,6 +81,7 @@ private:
 
 	wam::PackageCatalog m_PackageCatalog = nullptr;
 	winrt::event_token m_PackageUninstallingToken;
+	winrt::event_token m_PackageUpdatingToken;
 	std::wstring m_PackageBeingWatched;
 
 	static DWORD s_ProxyStubRegistrationCookie;

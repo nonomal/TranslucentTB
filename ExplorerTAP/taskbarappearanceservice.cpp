@@ -206,6 +206,7 @@ HRESULT TaskbarAppearanceService::KillExplorerWhenPackageUninstalls(LPCWSTR pack
 		auto catalog = wam::PackageCatalog::OpenForPackage(pm.FindPackageForUser(L"", packageFullNameSv));
 
 		m_PackageUninstallingToken = catalog.PackageUninstalling({ get_weak(), &TaskbarAppearanceService::OnPackageUninstalling });
+		m_PackageUpdatingToken = catalog.PackageUpdating({ get_weak(), &TaskbarAppearanceService::OnPackageUpdating });
 		m_PackageBeingWatched = packageFullNameSv;
 		m_PackageCatalog = std::move(catalog);
 
@@ -260,9 +261,11 @@ TaskbarAppearanceService::~TaskbarAppearanceService()
 {
 	if (m_PackageCatalog)
 	{
+		m_PackageCatalog.PackageUpdating(m_PackageUpdatingToken);
 		m_PackageCatalog.PackageUninstalling(m_PackageUninstallingToken);
 
 		m_PackageBeingWatched.clear();
+		m_PackageUpdatingToken = { };
 		m_PackageUninstallingToken = { };
 		m_PackageCatalog = nullptr;
 	}
@@ -315,6 +318,15 @@ winrt::fire_and_forget TaskbarAppearanceService::OnProcessDied()
 void TaskbarAppearanceService::OnPackageUninstalling(const wam::PackageCatalog&, const wam::PackageUninstallingEventArgs &args)
 {
 	if (args.Package().Id().FullName() == m_PackageBeingWatched)
+	{
+		// kill explorer to force the system to restart it, thereby unloading our DLL.
+		TerminateProcess(GetCurrentProcess(), 0);
+	}
+}
+
+void TaskbarAppearanceService::OnPackageUpdating(const wam::PackageCatalog&, const wam::PackageUpdatingEventArgs &args)
+{
+	if (args.SourcePackage().Id().FullName() == m_PackageBeingWatched)
 	{
 		// kill explorer to force the system to restart it, thereby unloading our DLL.
 		TerminateProcess(GetCurrentProcess(), 0);
