@@ -89,10 +89,10 @@ Application::Application(HINSTANCE hInst, std::optional<std::filesystem::path> s
 		hInst,
 		L"Microsoft.UI.Xaml.2.8_8wekyb3d8bbwe",
 		PACKAGE_VERSION {
-			// 8.2310.30001.0 but the order is reversed because that's how the struct is.
+			// 8.2501.31001.0 but the order is reversed because that's how the struct is.
 			.Revision = 0,
-			.Build = 30001,
-			.Minor = 2310,
+			.Build = 31001,
+			.Minor = 2501,
 			.Major = 8
 		},
 		storageFolder.has_value()
