@@ -56,6 +56,9 @@ static constexpr Util::null_terminated_wstring_view WM_TTBNEWINSTANCESTARTED = L
 // Sent to the worker to apply taskbar color preview.
 static constexpr Util::null_terminated_wstring_view WM_TTBAPPLYCOLORPREVIEW = L"TTB_ApplyColorPreview";
 
+// Hotkey IDs
+static constexpr int RESET_STATE_GLOBAL_HOTKEY_ID = 2;
+
 #pragma endregion
 
 #pragma region Window classes
