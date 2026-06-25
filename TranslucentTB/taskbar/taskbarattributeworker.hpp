@@ -121,6 +121,8 @@ private:
 	winrt::event_token m_SearchViewVisibilityChangedToken;
 	winrt::WindowsUdk::UI::Shell::ShellViewCoordinator m_FindInStartViewCoordinator;
 	winrt::event_token m_FindInStartVisibilityChangedToken;
+	winrt::WindowsUdk::UI::Shell::ShellViewCoordinator m_TaskViewViewCoordinator;
+	winrt::event_token m_TaskViewVisibilityChangedToken;
 
 	// Messages
 	std::optional<UINT> m_TaskbarCreatedMessage;
@@ -204,6 +206,8 @@ private:
 	void CreateAppVisibility();
 	void CreateSearchManager();
 	void UnregisterSearchCallbacks() noexcept;
+	void CreateTaskViewManager();
+	void UnregisterTaskViewCallbacks() noexcept;
 	WINEVENTPROC CreateThunk(void (CALLBACK TaskbarAttributeWorker:: *proc)(DWORD, HWND, LONG, LONG, DWORD, DWORD));
 	static wil::unique_hwineventhook CreateHook(DWORD eventMin, DWORD eventMax, WINEVENTPROC proc);
 	void ReturnToStock();

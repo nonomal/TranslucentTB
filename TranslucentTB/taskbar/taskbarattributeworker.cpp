@@ -941,6 +941,42 @@ void TaskbarAttributeWorker::UnregisterSearchCallbacks() noexcept
 	}
 }
 
+void TaskbarAttributeWorker::CreateTaskViewManager()
+{
+	UnregisterTaskViewCallbacks();
+
+	m_TaskViewViewCoordinator = nullptr;
+
+	if (m_TaskViewVisibilityChangeMessage && m_IsWindows11)
+	{
+		try
+		{
+			using winrt::WindowsUdk::UI::Shell::ShellView;
+			using winrt::WindowsUdk::UI::Shell::ShellViewCoordinator;
+
+			m_TaskViewViewCoordinator = ShellViewCoordinator { winrt::WindowsUdk::UI::Shell::ShellView::TaskView };
+
+			m_TaskViewVisibilityChangedToken = m_TaskViewViewCoordinator.VisibilityChanged([this](const ShellViewCoordinator& coordinator, const wf::IInspectable&)
+			{
+				post_message(*m_TaskViewVisibilityChangeMessage, coordinator.Visibility() == winrt::WindowsUdk::UI::Shell::ViewVisibility::Visible);
+			});
+		}
+		HresultErrorCatch(spdlog::level::warn, L"Failed to create ShellViewCoordinator");
+	}
+}
+
+void TaskbarAttributeWorker::UnregisterTaskViewCallbacks() noexcept
+{
+	if (m_TaskViewViewCoordinator)
+	{
+		if (m_TaskViewVisibilityChangedToken)
+		{
+			m_TaskViewViewCoordinator.VisibilityChanged(m_TaskViewVisibilityChangedToken);
+			m_TaskViewVisibilityChangedToken = { };
+		}
+	}
+}
+
 WINEVENTPROC TaskbarAttributeWorker::CreateThunk(void(CALLBACK TaskbarAttributeWorker:: *proc)(DWORD, HWND, LONG, LONG, DWORD, DWORD))
 {
 	return m_ThunkPage.make_thunk<WINEVENTPROC>(this, proc);
@@ -1063,13 +1099,16 @@ void TaskbarAttributeWorker::InsertTaskbar(HMONITOR mon, Window window)
 	m_NormalTaskbars.insert(window);
 	m_Taskbars.insert_or_assign(mon, MonitorInfo { taskbarInfo });
 
-	if (wil::unique_hhook hook { m_InjectExplorerHook(window) })
+	if (m_TaskbarType != TaskbarType::XAML)
 	{
-		m_Hooks.push_back(std::move(hook));
-	}
-	else
-	{
-		LastErrorHandle(spdlog::level::critical, L"Failed to set hook.");
+		if (wil::unique_hhook hook { m_InjectExplorerHook(window) })
+		{
+			m_Hooks.push_back(std::move(hook));
+		}
+		else
+		{
+			LastErrorHandle(spdlog::level::critical, L"Failed to set hook.");
+		}
 	}
 }
 
@@ -1202,6 +1241,7 @@ TaskbarAttributeWorker::TaskbarAttributeWorker(ConfigManager &cfgManager, HINSTA
 	m_SearchManager(nullptr),
 	m_SearchViewCoordinator(nullptr),
 	m_FindInStartViewCoordinator(nullptr),
+	m_TaskViewViewCoordinator(nullptr),
 	m_TaskbarCreatedMessage(Window::RegisterMessage(WM_TASKBARCREATED)),
 	m_RefreshRequestedMessage(Window::RegisterMessage(WM_TTBHOOKREQUESTREFRESH)),
 	m_TaskViewVisibilityChangeMessage(Window::RegisterMessage(WM_TTBHOOKTASKVIEWVISIBILITYCHANGE)),
@@ -1461,6 +1501,7 @@ void TaskbarAttributeWorker::ResetState(bool manual)
 		oldHooks.clear();
 
 		CreateSearchManager();
+		CreateTaskViewManager();
 
 		// This might race but it's not an issue because
 		// it'll race on a single thread and only ends up
@@ -1478,7 +1519,11 @@ void TaskbarAttributeWorker::ResetState(bool manual)
 
 		// TODO: check if aero peek is active
 
-		if (const auto hookWnd = Window::Find(TTBHOOK_TASKVIEWMONITOR, TTBHOOK_TASKVIEWMONITOR); hookWnd && m_IsTaskViewOpenedMessage)
+		if (m_TaskViewViewCoordinator)
+		{
+			m_TaskViewActive = m_TaskViewViewCoordinator.Visibility() == winrt::WindowsUdk::UI::Shell::ViewVisibility::Visible;
+		}
+		else if (const auto hookWnd = Window::Find(TTBHOOK_TASKVIEWMONITOR, TTBHOOK_TASKVIEWMONITOR); hookWnd && m_IsTaskViewOpenedMessage)
 		{
 			m_TaskViewActive = hookWnd.send_message(*m_IsTaskViewOpenedMessage);
 		}
@@ -1527,6 +1572,7 @@ void TaskbarAttributeWorker::ResetState(bool manual)
 TaskbarAttributeWorker::~TaskbarAttributeWorker() noexcept(false)
 {
 	m_disableAttributeRefreshReply = true;
+	UnregisterTaskViewCallbacks();
 	UnregisterSearchCallbacks();
 	ReturnToStock();
 }
