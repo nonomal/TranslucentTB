@@ -70,7 +70,7 @@ private:
 	std::optional<TaskbarInfo> GetTaskbarInfo(HWND taskbar);
 
 	void OnTaskbarBackgroundUpdated(const wux::DependencyObject &sender, const wux::DependencyProperty &dp);
-	void OnTaskbarBorderUpdated(const wux::DependencyObject& sender, const wux::DependencyProperty& dp);
+	void OnTaskbarBorderUpdated(const wux::DependencyObject &sender, const wux::DependencyProperty &dp);
 
 	static void RestoreDefaultControlFill(const ControlInfo<wux::Shapes::Shape> &info);
 	static void NTAPI ProcessWaitCallback(void *parameter, BOOLEAN timedOut);

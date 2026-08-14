@@ -368,7 +368,7 @@ std::optional<TaskbarAppearanceService::TaskbarInfo> TaskbarAppearanceService::G
 	return std::nullopt;
 }
 
-void TaskbarAppearanceService::OnTaskbarBackgroundUpdated(const wux::DependencyObject &sender, const wux::DependencyProperty &dp)
+void TaskbarAppearanceService::OnTaskbarBackgroundUpdated(const wux::DependencyObject &sender, const wux::DependencyProperty&)
 {
 	for (auto& [handle, info] : m_Taskbars)
 	{
@@ -379,11 +379,11 @@ void TaskbarAppearanceService::OnTaskbarBackgroundUpdated(const wux::DependencyO
 	}
 }
 
-void TaskbarAppearanceService::OnTaskbarBorderUpdated(const wux::DependencyObject& sender, const wux::DependencyProperty& dp)
+void TaskbarAppearanceService::OnTaskbarBorderUpdated(const wux::DependencyObject &sender, const wux::DependencyProperty&)
 {
 	for (auto& [handle, info] : m_Taskbars)
 	{
-		if (sender == info.border.control && !info.background.originalFill)
+		if (sender == info.border.control && !info.border.originalFill)
 		{
 			info.border.originalFill = info.border.control.Fill();
 		}
