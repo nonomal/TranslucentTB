@@ -55,6 +55,7 @@ private:
 	{
 		T control = nullptr;
 		wux::Media::Brush originalFill = nullptr;
+		int64_t fillChangedToken = 0;
 	};
 
 	struct TaskbarInfo
@@ -67,6 +68,9 @@ private:
 	void OnPackageUninstalling(const wam::PackageCatalog &catalog, const wam::PackageUninstallingEventArgs &args);
 	void OnPackageUpdating(const wam::PackageCatalog &catalog, const wam::PackageUpdatingEventArgs &args);
 	std::optional<TaskbarInfo> GetTaskbarInfo(HWND taskbar);
+
+	void OnTaskbarBackgroundUpdated(const wux::DependencyObject &sender, const wux::DependencyProperty &dp);
+	void OnTaskbarBorderUpdated(const wux::DependencyObject& sender, const wux::DependencyProperty& dp);
 
 	static void RestoreDefaultControlFill(const ControlInfo<wux::Shapes::Shape> &info);
 	static void NTAPI ProcessWaitCallback(void *parameter, BOOLEAN timedOut);

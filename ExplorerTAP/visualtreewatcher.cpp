@@ -21,12 +21,18 @@ VisualTreeWatcher::VisualTreeWatcher(winrt::com_ptr<IUnknown> site, wil::unique_
 
 HRESULT VisualTreeWatcher::OnVisualTreeChange(ParentChildRelation relation, VisualElement element, VisualMutationType mutationType) try
 {
+	// ownership of these strings is given to us lol
+	wil::unique_bstr filename(element.SrcInfo.FileName);
+	wil::unique_bstr hash(element.SrcInfo.Hash);
+	wil::unique_bstr name(element.Name);
+	wil::unique_bstr type(element.Type);
+
 	switch (mutationType)
 	{
 	case Add:
 	{
-		const std::wstring_view type { element.Type, SysStringLen(element.Type) };
-		if (type == winrt::name_of<wuxh::DesktopWindowXamlSource>())
+		const std::wstring_view type_view { type.get(), SysStringLen(type.get())};
+		if (type_view == winrt::name_of<wuxh::DesktopWindowXamlSource>())
 		{
 			// we cannot check if the source contains a taskbar here,
 			// because when a new taskbar gets added the source gets created
@@ -34,7 +40,7 @@ HRESULT VisualTreeWatcher::OnVisualTreeChange(ParentChildRelation relation, Visu
 			// of handles so we can later match it against the added TaskbarFrame.
 			m_NonMatchingXamlSources.insert(element.Handle);
 		}
-		else if (type == L"Taskbar.TaskbarFrame")
+		else if (type_view == L"Taskbar.TaskbarFrame")
 		{
 			// assume it goes DesktopWindowXamlSource -> RootGrid -> TaskbarFrame.
 			// we need RootGrid's pointer to find the right source based on its contents.
@@ -67,11 +73,11 @@ HRESULT VisualTreeWatcher::OnVisualTreeChange(ParentChildRelation relation, Visu
 				}
 			}
 		}
-		else if (type == winrt::name_of<wux::Shapes::Rectangle>())
+		else if (type_view == winrt::name_of<wux::Shapes::Rectangle>())
 		{
-			const std::wstring_view name { element.Name, SysStringLen(element.Name) };
-			const auto backgroundFill = name == L"BackgroundFill";
-			const auto backgroundStroke = name == L"BackgroundStroke";
+			const std::wstring_view name_view { name.get(), SysStringLen(name.get())};
+			const auto backgroundFill = name_view == L"BackgroundFill";
+			const auto backgroundStroke = name_view == L"BackgroundStroke";
 			if (backgroundFill || backgroundStroke)
 			{
 				if (const auto frame = FindParent(L"TaskbarFrame", FromHandle<wux::FrameworkElement>(relation.Parent)))

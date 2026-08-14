@@ -239,6 +239,12 @@ void TaskbarAppearanceService::RegisterTaskbarBackground(InstanceHandle frameHan
 	if (const auto it = m_Taskbars.find(frameHandle); it != m_Taskbars.end())
 	{
 		it->second.background.control = element;
+
+		// sometimes we may see objects come with their fill set to null, wait until the system initialized it before
+		// we start messing with it
+		// in the future if the taskbar doesn't change the original brush, but tries to change the entire brush
+		// this could be useful to suppress it and update the saved brush
+		element.RegisterPropertyChangedCallback(wux::Shapes::Shape::FillProperty(), { get_weak(), &TaskbarAppearanceService::OnTaskbarBackgroundUpdated });
 		it->second.background.originalFill = element.Fill();
 	}
 }
@@ -248,13 +254,29 @@ void TaskbarAppearanceService::RegisterTaskbarBorder(InstanceHandle frameHandle,
 	if (const auto it = m_Taskbars.find(frameHandle); it != m_Taskbars.end())
 	{
 		it->second.border.control = element;
+
+		element.RegisterPropertyChangedCallback(wux::Shapes::Shape::FillProperty(), { get_weak(), &TaskbarAppearanceService::OnTaskbarBorderUpdated });
 		it->second.border.originalFill = element.Fill();
 	}
 }
 
 void TaskbarAppearanceService::UnregisterTaskbar(InstanceHandle frameHandle)
 {
-	m_Taskbars.erase(frameHandle);
+	if (auto it = m_Taskbars.find(frameHandle); it != m_Taskbars.end())
+	{
+		const auto fillProperty = wux::Shapes::Shape::FillProperty();
+		if (it->second.background.fillChangedToken != 0)
+		{
+			it->second.background.control.UnregisterPropertyChangedCallback(fillProperty, it->second.background.fillChangedToken);
+		}
+
+		if (it->second.border.fillChangedToken != 0)
+		{
+			it->second.border.control.UnregisterPropertyChangedCallback(fillProperty, it->second.border.fillChangedToken);
+		}
+
+		m_Taskbars.erase(it);
+	}
 }
 
 TaskbarAppearanceService::~TaskbarAppearanceService()
@@ -344,6 +366,28 @@ std::optional<TaskbarAppearanceService::TaskbarInfo> TaskbarAppearanceService::G
 	}
 
 	return std::nullopt;
+}
+
+void TaskbarAppearanceService::OnTaskbarBackgroundUpdated(const wux::DependencyObject &sender, const wux::DependencyProperty &dp)
+{
+	for (auto& [handle, info] : m_Taskbars)
+	{
+		if (sender == info.background.control && !info.background.originalFill)
+		{
+			info.background.originalFill = info.background.control.Fill();
+		}
+	}
+}
+
+void TaskbarAppearanceService::OnTaskbarBorderUpdated(const wux::DependencyObject& sender, const wux::DependencyProperty& dp)
+{
+	for (auto& [handle, info] : m_Taskbars)
+	{
+		if (sender == info.border.control && !info.background.originalFill)
+		{
+			info.border.originalFill = info.border.control.Fill();
+		}
+	}
 }
 
 void TaskbarAppearanceService::RestoreDefaultControlFill(const ControlInfo<wux::Shapes::Shape> &info)
