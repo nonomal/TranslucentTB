@@ -175,9 +175,8 @@ winrt::fire_and_forget Application::Shutdown()
 	// it can happen that Shutdown is called several times
 	// e.g. the user uninstalls the app while the welcome page is opened, which causes Shutdown
 	// to close the welcome page, which tries to shutdown the app.
-	if (!m_ShuttingDown)
+	if (!m_ShuttingDown.exchange(true))
 	{
-		m_ShuttingDown = true;
 		const bool hasWelcomePage = m_WelcomePage != nullptr;
 
 		bool canExit = true;
@@ -213,6 +212,10 @@ winrt::fire_and_forget Application::Shutdown()
 
 			// exit
 			PostQuitMessage(hasWelcomePage ? 1 : 0);
+		}
+		else
+		{
+			m_ShuttingDown = false;
 		}
 	}
 }

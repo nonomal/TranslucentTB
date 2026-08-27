@@ -1,5 +1,6 @@
 #pragma once
 #include "arch.h"
+#include <atomic>
 #include <filesystem>
 #include <memory>
 #include <optional>
@@ -39,7 +40,7 @@ class Application final {
 	Window m_WelcomePage;
 
 	XamlThreadPool m_Xaml;
-	bool m_ShuttingDown;
+	std::atomic<bool> m_ShuttingDown;
 
 	winrt::Windows::System::DispatcherQueue m_Dispatcher;
 
