@@ -1,6 +1,7 @@
 #include "taskbarattributeworker.hpp"
 #include <functional>
 #include <member_thunk/member_thunk.hpp>
+#include <set>
 #include <tlhelp32.h>
 
 #include "constants.hpp"
@@ -18,39 +19,41 @@
 class TaskbarAttributeWorker::AttributeRefresher {
 private:
 	TaskbarAttributeWorker &m_Worker;
-	taskbar_iterator m_MainMonIt;
-	bool m_Refresh;
+	std::set<HMONITOR> m_ToRefresh;
+	bool m_Armed;
 
 public:
 	AttributeRefresher(TaskbarAttributeWorker &worker, bool refresh = true) noexcept :
-		m_Worker(worker), m_MainMonIt(m_Worker.m_Taskbars.end()), m_Refresh(refresh) { }
+		m_Worker(worker), m_Armed(refresh) { }
 
 	AttributeRefresher(const AttributeRefresher &) = delete;
 	AttributeRefresher &operator =(const AttributeRefresher &) = delete;
 
 	void refresh(taskbar_iterator it)
 	{
-		if (m_Refresh)
+		if (m_Armed)
 		{
-			if (it->first == MonitorFromPoint({ 0, 0 }, MONITOR_DEFAULTTOPRIMARY))
-			{
-				assert(m_MainMonIt == m_Worker.m_Taskbars.end());
-				m_MainMonIt = it;
-			}
-			else
-			{
-				m_Worker.RefreshAttribute(it);
-			}
+			m_ToRefresh.insert(it->first);
 		}
 	}
 
-	void disarm() noexcept { m_MainMonIt = m_Worker.m_Taskbars.end(); }
+	void disarm() noexcept
+	{
+		m_Armed = false;
+		m_ToRefresh.clear();
+	}
 
 	~AttributeRefresher() noexcept(false)
 	{
-		if (m_Refresh && m_MainMonIt != m_Worker.m_Taskbars.end())
+		if (m_Armed)
 		{
-			m_Worker.RefreshAttribute(m_MainMonIt);
+			for (const auto mon : m_ToRefresh)
+			{
+				if (const auto it = m_Worker.m_Taskbars.find(mon); it != m_Worker.m_Taskbars.end())
+				{
+					m_Worker.RefreshAttribute(it);
+				}
+			}
 		}
 	}
 };
@@ -694,6 +697,8 @@ void TaskbarAttributeWorker::InsertWindow(Window window, bool refresh)
 	// have an iterator to it. Acquiring the iterator after the
 	// call to on_current_desktop resolves this issue.
 	const bool windowMatches = window.is_user_window() && !m_ConfigManager.GetConfig().IgnoredWindows.IsFiltered(window);
+	const bool isMaximised = window.maximised();
+	const bool isMinimised = window.minimised();
 	const HMONITOR mon = window.monitor();
 
 	for (auto it = m_Taskbars.begin(); it != m_Taskbars.end(); ++it)
@@ -703,7 +708,7 @@ void TaskbarAttributeWorker::InsertWindow(Window window, bool refresh)
 
 		if (it->first == mon)
 		{
-			if (windowMatches && window.maximised())
+			if (windowMatches && isMaximised)
 			{
 				if (normal.erase(window) > 0)
 				{
@@ -715,7 +720,7 @@ void TaskbarAttributeWorker::InsertWindow(Window window, bool refresh)
 				refresher.refresh(it);
 				continue;
 			}
-			else if (windowMatches && !window.minimised())
+			else if (windowMatches && !isMinimised)
 			{
 				if (maximised.erase(window) > 0)
 				{
